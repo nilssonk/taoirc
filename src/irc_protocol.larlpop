@@ -1,0 +1,74 @@
+use crate::irc_structs::*;
+use std::str::FromStr;
+
+grammar;
+
+pub Message: Message = {
+    <pr:Prefix?> <c:Command> <pa:Params> => Message::from(pr, c, pa),
+}
+
+Prefix: Prefix = {
+    ":" <sp:ServerPrefix> " " => sp,
+    ":" <up:UserPrefix> " " => up,
+}
+
+ServerPrefix: Prefix = {
+    <sn:Host> => Prefix::Server(sn),
+}
+
+UserPrefix: Prefix = {
+    <n:Nick> <u:UserPrefixUser?> <h:UserPrefixHost?> => Prefix::User(UserPrefix::from(n, u, h)),
+}
+
+Command: Command = {
+    <s:r"[[:alpha:]]+"> => Command::String(s.to_owned()),
+    <s:r"[0-9][0-9][0-9]"> => Command::Code(i16::from_str(s).unwrap()),
+}
+
+UserPrefixUser: String = {
+    "!" <u:User> => u.to_owned(),
+}
+
+UserPrefixHost: String = {
+    "@" <h:Host> => h.to_owned(),
+}
+
+Params: Vec<String> = {
+    " " <ps:Param+> => ps,
+    " " => vec![],
+}
+
+Param: String = {
+    " " <p:(":" <r"[^:^ ^\r^\n]*">)> => p.to_owned(),
+}
+
+Nick: String = {
+    <r"[0-9a-zA-Z`\-\[\]\^\{\}\\]+"> => <>.to_owned(),
+}
+
+User: String = {
+    <r".+"> => <>.to_owned(),
+}
+
+Host: String = {
+    <r"[a-zA-Z]+"> => <>.to_owned(),
+    <r"[a-zA-Z][0-9a-zA-Z\-]*[0-9a-zA-Z]+\.[a-zA-Z][0-9a-zA-Z\-]*[0-9a-zA-Z]+"> => <>.to_owned(),
+}
+
+match {
+    ":",
+    " ",
+    "!",
+    "@",
+    r"[a-zA-Z]+",
+    r"[0-9][0-9][0-9]",
+} else {
+    r"[0-9a-zA-Z`\-\[\]\^\{\}\\]+",
+} else {
+    r".+",
+} else {
+    r"[a-zA-Z][0-9a-zA-Z\-]*[0-9a-zA-Z]+\.[a-zA-Z][0-9a-zA-Z\-]*[0-9a-zA-Z]+",
+} else {
+    r"[^:^ ^\r^\n]*",
+    _,
+}
